@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx';
-import { FileData, MatchedRecord, Statistics } from '@/types';More actions
+import * as XLSX from 'xlsx';More actions
+import { FileData, MatchedRecord, Statistics } from '@/types';
 
 export function formatNumber(value: number, type: 'number' | 'currency' | 'percent' = 'number'): string {
   if (type === 'currency') {
