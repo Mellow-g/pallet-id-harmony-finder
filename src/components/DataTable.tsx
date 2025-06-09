@@ -1,7 +1,6 @@
-
 import {
   Table,
-  TableBody,
+  TableBody,More actions
   TableCell,
   TableHead,
   TableHeader,
@@ -11,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MatchedRecord, Statistics } from "@/types";
 import { formatNumber, generateExcel } from "@/utils/fileProcessor";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Download, Check, X } from "lucide-react";
 
 interface DataTableProps {
@@ -46,7 +45,7 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
     filtered.forEach(record => {
       if (record.reconciled) {
         reconciled.push(record);
-      } else if (!record.formattedPalletId && !record.supplierRef) {
+      } else if (!record.consignNumber && !record.supplierRef) {
         incomplete.push(record);
       } else if (record.status === 'Matched') {
         matched.push(record);
@@ -58,8 +57,8 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
     return [...reconciled, ...matched, ...unmatched, ...incomplete];
   }, [data, statusFilter, varietyFilter, reconciledFilter]);
 
-  // Use useEffect to update parent component with filtered data for statistics
-  useEffect(() => {
+  // Update parent component with filtered data for statistics
+  useMemo(() => {
     onFilteredDataChange?.(filteredAndSortedData);
   }, [filteredAndSortedData, onFilteredDataChange]);
 
@@ -68,7 +67,7 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
   };
 
   const getRowClassName = (record: MatchedRecord) => {
-    if (!record.formattedPalletId && !record.supplierRef) {
+    if (!record.consignNumber && !record.supplierRef) {
       return 'bg-orange-900/30 hover:bg-orange-900/40';
     }
     if (record.status === 'Unmatched') {
@@ -79,8 +78,8 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
 
   // Define column classes with exact pixel widths and consistent alignment
   const columnClasses = {
-    palletId: "w-[140px] px-4",
-    exportPltId: "w-[160px] px-4",
+    consign: "w-[140px] px-4",
+    supplier: "w-[160px] px-4",
     status: "w-[100px] px-4",
     variety: "w-[80px] px-4",
     cartonType: "w-[100px] px-4",
@@ -144,8 +143,8 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
         <Table>
           <TableHeader className="sticky top-0 z-10">
             <TableRow className="bg-[#1A1F2C] border-b border-primary/20">
-              <TableHead className={`${columnClasses.palletId} text-primary font-semibold`}>Formatted Pallet ID</TableHead>
-              <TableHead className={`${columnClasses.exportPltId} text-primary font-semibold`}>Export Plt ID</TableHead>
+              <TableHead className={`${columnClasses.consign} text-primary font-semibold`}>Consign Number</TableHead>
+              <TableHead className={`${columnClasses.supplier} text-primary font-semibold`}>Supplier Reference</TableHead>
               <TableHead className={`${columnClasses.status} text-primary font-semibold`}>Status</TableHead>
               <TableHead className={`${columnClasses.variety} text-primary font-semibold`}>Variety</TableHead>
               <TableHead className={`${columnClasses.cartonType} text-primary font-semibold`}>Carton Type</TableHead>
@@ -164,8 +163,8 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
                 key={index}
                 className={`${getRowClassName(record)} transition-colors`}
               >
-                <TableCell className={columnClasses.palletId}>{record.formattedPalletId}</TableCell>
-                <TableCell className={columnClasses.exportPltId}>{record.supplierRef}</TableCell>
+                <TableCell className={columnClasses.consign}>{record.consignNumber}</TableCell>
+                <TableCell className={columnClasses.supplier}>{record.supplierRef}</TableCell>
                 <TableCell className={columnClasses.status}>
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
@@ -197,4 +196,3 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
       </div>
     </div>
   );
-};
