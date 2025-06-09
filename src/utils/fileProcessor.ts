@@ -26,13 +26,39 @@ export async function processFile(file: File): Promise<any[]> {
         if (!e.target?.result) throw new Error('Failed to read file');
         const workbook = XLSX.read(e.target.result, { type: 'array' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        
+        // Get raw data with header information
         const data = XLSX.utils.sheet_to_json(firstSheet, { 
           raw: true,
-          defval: ''
+          defval: '',
+          header: 1 // This will give us an array of arrays instead of objects
         });
-        console.log('Processed file data:', data.slice(0, 3)); // Log first 3 rows for debugging
-        console.log('Column names found:', data.length > 0 ? Object.keys(data[0]) : 'No data');
-        resolve(data);
+        
+        console.log('Raw sheet data (first 10 rows):', data.slice(0, 10));
+        console.log('Total rows in sheet:', data.length);
+        
+        // Convert back to objects for compatibility
+        if (data.length > 0) {
+          const headers = data[0] as string[];
+          console.log('Headers found:', headers);
+          
+          const objectData = data.slice(1).map((row: any[], index) => {
+            const obj: any = { __rowNum__: index + 2 };
+            headers.forEach((header, colIndex) => {
+              obj[header || `__EMPTY_${colIndex}`] = row[colIndex] || '';
+            });
+            // Also add Column G specifically for load reports
+            if (row[6] !== undefined) { // Column G is index 6
+              obj['Column_G'] = row[6];
+            }
+            return obj;
+          });
+          
+          console.log('Processed object data (first 5 rows):', objectData.slice(0, 5));
+          resolve(objectData);
+        } else {
+          resolve([]);
+        }
       } catch (err) {
         console.error('Error processing file:', err);
         reject(err);
@@ -65,8 +91,9 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
   
   // Build a map of Formatted Pallet IDs from load data
   loadData.forEach((load, index) => {
-    // Try different possible column names for Formatted Pallet ID
+    // Try different possible sources for Formatted Pallet ID, including Column G
     const formattedPalletId = normalizePalletId(
+      load['Column_G'] ||  // Column G specifically
       load['Formatted Pallet ID'] || 
       load['Formatted Pallet Id'] || 
       load['formatted_pallet_id'] || 
@@ -74,26 +101,29 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
       ''
     );
     
-    if (formattedPalletId) {
-      console.log(`Load record ${index}: Formatted Pallet ID = ${formattedPalletId}`);
+    if (formattedPalletId && isValidPalletId(formattedPalletId)) {
+      console.log(`Load record ${index}: Formatted Pallet ID from Column G = ${formattedPalletId}`);
       loadDataMap.set(formattedPalletId, {
         formattedPalletId,
         variety: load['Variety'] || load['variety'] || '',
         cartonType: load['Ctn Type'] || load['ctn_type'] || load['carton_type'] || '',
         cartonsSent: Number(load['Sum of # Ctns'] || load['sum_of_ctns'] || load['# Ctns'] || 0)
       });
+    } else if (index < 10) {
+      console.log(`Load record ${index}: No valid pallet ID found. Column_G = ${load['Column_G']}, other fields checked but empty`);
     }
   });
 
   console.log('Load data map size:', loadDataMap.size);
+  console.log('Load data map entries:', Array.from(loadDataMap.entries()).slice(0, 5));
 
   // Match sales data with load data using export_plt_id
   const matchedRecords: MatchedRecord[] = salesData
     .filter((sale, index) => {
       // Try different possible column names for export_plt_id
       const exportPltId = (
+        sale['Export Plt ID'] ||
         sale['export_plt_id'] || 
-        sale['Export Plt ID'] || 
         sale['Export_Plt_ID'] || 
         sale['ExportPltId'] || 
         ''
@@ -107,8 +137,8 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
     })
     .map((sale, index) => {
       const exportPltId = normalizePalletId(
+        sale['Export Plt ID'] ||
         sale['export_plt_id'] || 
-        sale['Export Plt ID'] || 
         sale['Export_Plt_ID'] || 
         sale['ExportPltId'] || 
         ''
@@ -118,16 +148,17 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
 
       if (loadInfo) {
         processedPallets.add(loadInfo.formattedPalletId);
-        console.log(`Match found for ${exportPltId}`);
+        console.log(`Match found! Export Plt ID ${exportPltId} matches Formatted Pallet ID ${loadInfo.formattedPalletId}`);
       } else if (index < 5) {
-        console.log(`No match found for ${exportPltId}`);
+        console.log(`No match found for Export Plt ID: ${exportPltId}`);
       }
 
       // Try different column names for sales data fields
       const received = Number(
         sale['Received'] || 
         sale['received'] || 
-        sale['qty_received'] || 
+        sale['qty_received'] ||
+        sale['ctn_qty'] ||
         0
       );
       
@@ -141,6 +172,7 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
       const totalValue = Number(
         sale['Total Value'] || 
         sale['total_value'] || 
+        sale['total_income'] ||
         sale['value'] || 
         0
       );
@@ -164,6 +196,7 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
   // Add unmatched load records (those not found in sales data)
   loadData.forEach(load => {
     const formattedPalletId = normalizePalletId(
+      load['Column_G'] ||
       load['Formatted Pallet ID'] || 
       load['Formatted Pallet Id'] || 
       load['formatted_pallet_id'] || 
@@ -171,7 +204,8 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
       ''
     );
     
-    if (formattedPalletId && !processedPallets.has(formattedPalletId)) {
+    if (formattedPalletId && isValidPalletId(formattedPalletId) && !processedPallets.has(formattedPalletId)) {
+      console.log(`Adding unmatched load record: ${formattedPalletId}`);
       matchedRecords.push({
         formattedPalletId,
         supplierRef: '',
