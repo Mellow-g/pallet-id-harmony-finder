@@ -1,5 +1,5 @@
 export type FileType = 'load' | 'sales';
-More actions
+
 export interface FileData {
   [key: string]: any;
 }
@@ -26,3 +26,4 @@ export interface Statistics {
   totalValue: number;
   averageValue: number;
   matchRate: number;
+}
