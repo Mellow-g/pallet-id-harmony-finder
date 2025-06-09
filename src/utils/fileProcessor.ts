@@ -30,8 +30,11 @@ export async function processFile(file: File): Promise<any[]> {
           raw: true,
           defval: ''
         });
+        console.log('Processed file data:', data.slice(0, 3)); // Log first 3 rows for debugging
+        console.log('Column names found:', data.length > 0 ? Object.keys(data[0]) : 'No data');
         resolve(data);
       } catch (err) {
+        console.error('Error processing file:', err);
         reject(err);
       }
     };
@@ -54,70 +57,130 @@ function isValidPalletId(palletId: string | undefined): boolean {
 }
 
 export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
+  console.log('Load data sample:', loadData.slice(0, 2));
+  console.log('Sales data sample:', salesData.slice(0, 2));
+  
   const loadDataMap = new Map();
   const processedPallets = new Set();
   
   // Build a map of Formatted Pallet IDs from load data
-  loadData.forEach(load => {
-    const formattedPalletId = normalizePalletId(load['Formatted Pallet ID'] || '');
+  loadData.forEach((load, index) => {
+    // Try different possible column names for Formatted Pallet ID
+    const formattedPalletId = normalizePalletId(
+      load['Formatted Pallet ID'] || 
+      load['Formatted Pallet Id'] || 
+      load['formatted_pallet_id'] || 
+      load['FormattedPalletID'] || 
+      ''
+    );
     
     if (formattedPalletId) {
+      console.log(`Load record ${index}: Formatted Pallet ID = ${formattedPalletId}`);
       loadDataMap.set(formattedPalletId, {
         formattedPalletId,
-        variety: load['Variety'] || '',
-        cartonType: load['Ctn Type'] || '',
-        cartonsSent: Number(load['Sum of # Ctns']) || 0
+        variety: load['Variety'] || load['variety'] || '',
+        cartonType: load['Ctn Type'] || load['ctn_type'] || load['carton_type'] || '',
+        cartonsSent: Number(load['Sum of # Ctns'] || load['sum_of_ctns'] || load['# Ctns'] || 0)
       });
     }
   });
 
-  // Match sales data with load data using Export Plt ID
+  console.log('Load data map size:', loadDataMap.size);
+
+  // Match sales data with load data using export_plt_id
   const matchedRecords: MatchedRecord[] = salesData
-    .filter(sale => {
-      const exportPltId = sale['Export Plt ID']?.toString().trim();
-      return isValidPalletId(exportPltId);
+    .filter((sale, index) => {
+      // Try different possible column names for export_plt_id
+      const exportPltId = (
+        sale['export_plt_id'] || 
+        sale['Export Plt ID'] || 
+        sale['Export_Plt_ID'] || 
+        sale['ExportPltId'] || 
+        ''
+      )?.toString().trim();
+      
+      const isValid = isValidPalletId(exportPltId);
+      if (index < 5) { // Log first 5 for debugging
+        console.log(`Sales record ${index}: export_plt_id = ${exportPltId}, valid = ${isValid}`);
+      }
+      return isValid;
     })
-    .map(sale => {
-      const exportPltId = normalizePalletId(sale['Export Plt ID']);
+    .map((sale, index) => {
+      const exportPltId = normalizePalletId(
+        sale['export_plt_id'] || 
+        sale['Export Plt ID'] || 
+        sale['Export_Plt_ID'] || 
+        sale['ExportPltId'] || 
+        ''
+      );
+      
       const loadInfo = loadDataMap.get(exportPltId);
 
       if (loadInfo) {
         processedPallets.add(loadInfo.formattedPalletId);
+        console.log(`Match found for ${exportPltId}`);
+      } else if (index < 5) {
+        console.log(`No match found for ${exportPltId}`);
       }
 
-      const received = Number(sale['Received']) || 0;
-      const soldOnMarket = Number(sale['Sold']) || 0;
+      // Try different column names for sales data fields
+      const received = Number(
+        sale['Received'] || 
+        sale['received'] || 
+        sale['qty_received'] || 
+        0
+      );
+      
+      const soldOnMarket = Number(
+        sale['Sold'] || 
+        sale['sold'] || 
+        sale['qty_sold'] || 
+        0
+      );
+
+      const totalValue = Number(
+        sale['Total Value'] || 
+        sale['total_value'] || 
+        sale['value'] || 
+        0
+      );
 
       return {
         formattedPalletId: loadInfo ? loadInfo.formattedPalletId : '',
-        supplierRef: exportPltId || '', // Using Export Plt ID as the reference
+        supplierRef: exportPltId || '',
         status: loadInfo ? 'Matched' as const : 'Unmatched' as const,
-        variety: loadInfo ? loadInfo.variety : '',
-        cartonType: loadInfo ? loadInfo.cartonType : '',
+        variety: loadInfo ? loadInfo.variety : (sale['variety'] || sale['Variety'] || ''),
+        cartonType: loadInfo ? loadInfo.cartonType : (sale['carton_type'] || sale['Carton Type'] || ''),
         cartonsSent: loadInfo ? loadInfo.cartonsSent : 0,
         received,
         deviationSentReceived: loadInfo ? loadInfo.cartonsSent - received : 0,
         soldOnMarket,
         deviationReceivedSold: received - soldOnMarket,
-        totalValue: Number(sale['Total Value']) || 0,
+        totalValue,
         reconciled: loadInfo ? (loadInfo.cartonsSent === received && received === soldOnMarket) : false
       };
     });
 
   // Add unmatched load records (those not found in sales data)
   loadData.forEach(load => {
-    const formattedPalletId = normalizePalletId(load['Formatted Pallet ID'] || '');
+    const formattedPalletId = normalizePalletId(
+      load['Formatted Pallet ID'] || 
+      load['Formatted Pallet Id'] || 
+      load['formatted_pallet_id'] || 
+      load['FormattedPalletID'] || 
+      ''
+    );
     
     if (formattedPalletId && !processedPallets.has(formattedPalletId)) {
       matchedRecords.push({
         formattedPalletId,
-        supplierRef: '', // No corresponding Export Plt ID for unmatched load records
+        supplierRef: '',
         status: 'Unmatched' as const,
-        variety: load['Variety'] || '',
-        cartonType: load['Ctn Type'] || '',
-        cartonsSent: Number(load['Sum of # Ctns']) || 0,
+        variety: load['Variety'] || load['variety'] || '',
+        cartonType: load['Ctn Type'] || load['ctn_type'] || load['carton_type'] || '',
+        cartonsSent: Number(load['Sum of # Ctns'] || load['sum_of_ctns'] || load['# Ctns'] || 0),
         received: 0,
-        deviationSentReceived: Number(load['Sum of # Ctns']) || 0,
+        deviationSentReceived: Number(load['Sum of # Ctns'] || load['sum_of_ctns'] || load['# Ctns'] || 0),
         soldOnMarket: 0,
         deviationReceivedSold: 0,
         totalValue: 0,
@@ -125,6 +188,9 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
       });
     }
   });
+
+  console.log('Total matched records:', matchedRecords.length);
+  console.log('Sample matched records:', matchedRecords.slice(0, 3));
 
   return matchedRecords;
 }
