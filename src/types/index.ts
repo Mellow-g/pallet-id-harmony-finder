@@ -1,5 +1,5 @@
-export type FileType = 'load' | 'sales';More actions
-
+export type FileType = 'load' | 'sales';
+More actions
 export interface FileData {
   [key: string]: any;
 }
@@ -11,7 +11,7 @@ export interface MatchedRecord {
   variety: string;
   cartonType: string;
   cartonsSent: number;
-  received: number;More actions
+  received: number;
   deviationSentReceived: number;
   soldOnMarket: number;
   deviationReceivedSold: number;
