@@ -1,7 +1,7 @@
 import {
   Table,
-  TableBody,More actions
-  TableCell,
+  TableBody,
+  TableCell,More actions
   TableHead,
   TableHeader,
   TableRow,
