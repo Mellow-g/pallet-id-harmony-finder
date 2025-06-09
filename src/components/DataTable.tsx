@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MatchedRecord, Statistics } from "@/types";
 import { formatNumber, generateExcel } from "@/utils/fileProcessor";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Download, Check, X } from "lucide-react";
 
 interface DataTableProps {
@@ -57,8 +58,8 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
     return [...reconciled, ...matched, ...unmatched, ...incomplete];
   }, [data, statusFilter, varietyFilter, reconciledFilter]);
 
-  // Update parent component with filtered data for statistics
-  useMemo(() => {
+  // Use useEffect to update parent component with filtered data for statistics
+  useEffect(() => {
     onFilteredDataChange?.(filteredAndSortedData);
   }, [filteredAndSortedData, onFilteredDataChange]);
 
