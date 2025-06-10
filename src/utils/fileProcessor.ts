@@ -75,6 +75,8 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
         formattedPalletId,
         variety: load['Variety'] || '',
         cartonType: load['Ctn Type'] || '',
+        orchard: load['Orchard'] || '',
+        agent: load['Agent'] || '',
         cartonsSent
       });
     }
@@ -108,10 +110,12 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
         status: loadInfo ? 'Matched' as const : 'Unmatched' as const,
         variety: loadInfo ? loadInfo.variety : '',
         cartonType: loadInfo ? loadInfo.cartonType : '',
+        orchard: loadInfo ? loadInfo.orchard : '',
         cartonsSent: loadInfo ? loadInfo.cartonsSent : 0,
         soldOnMarket,
         deviationSentSold: loadInfo ? loadInfo.cartonsSent - soldOnMarket : 0,
         totalValue: Number(sale['Total Value']) || 0,
+        agent: loadInfo ? loadInfo.agent : '',
         reconciled: loadInfo ? (loadInfo.cartonsSent === soldOnMarket) : false
       };
     });
@@ -125,10 +129,12 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
         status: 'Unmatched' as const,
         variety: load['Variety'] || '',
         cartonType: load['Ctn Type'] || '',
+        orchard: load['Orchard'] || '',
         cartonsSent: Number(load['# Ctns']) || 0,
         soldOnMarket: 0,
         deviationSentSold: Number(load['# Ctns']) || 0,
         totalValue: 0,
+        agent: load['Agent'] || '',
         reconciled: false
       });
     }
@@ -159,17 +165,19 @@ export function generateExcel(data: MatchedRecord[]): void {
     'Status': item.status,
     'Variety': item.variety,
     'Carton Type': item.cartonType,
+    'Orchard': item.orchard,
     '# Ctns Sent': item.cartonsSent,
     'Sold on market': item.soldOnMarket,
     'Deviation Sent/Sold': item.deviationSentSold,
     'Total Value': item.totalValue,
+    'Agent': item.agent,
     'Reconciled': item.reconciled ? 'Yes' : 'No'
   }));
 
   const ws = XLSX.utils.json_to_sheet(exportData);
   
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  const totalValueCol = 'I';
+  const totalValueCol = 'J';
   for (let row = range.s.r + 1; row <= range.e.r; row++) {
     const cell = totalValueCol + (row + 1);
     if (ws[cell]) {

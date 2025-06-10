@@ -83,9 +83,11 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
     status: "w-[100px] px-4",
     variety: "w-[80px] px-4",
     cartonType: "w-[100px] px-4",
+    orchard: "w-[100px] px-4",
     numbers: "w-[100px] px-4 text-right",
     deviation: "w-[140px] px-4 text-right",
     value: "w-[120px] px-4 text-right",
+    agent: "w-[120px] px-4",
     reconciled: "w-[100px] px-4 text-center"
   };
 
@@ -148,10 +150,12 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
               <TableHead className={`${columnClasses.status} text-primary font-semibold`}>Status</TableHead>
               <TableHead className={`${columnClasses.variety} text-primary font-semibold`}>Variety</TableHead>
               <TableHead className={`${columnClasses.cartonType} text-primary font-semibold`}>Carton Type</TableHead>
+              <TableHead className={`${columnClasses.orchard} text-primary font-semibold`}>Orchard</TableHead>
               <TableHead className={`${columnClasses.numbers} text-primary font-semibold`}>Cartons Sent</TableHead>
               <TableHead className={`${columnClasses.numbers} text-primary font-semibold`}>Cartons Sold</TableHead>
               <TableHead className={`${columnClasses.deviation} text-primary font-semibold`}>Deviation Sent/Sold</TableHead>
               <TableHead className={`${columnClasses.value} text-primary font-semibold`}>Total Value</TableHead>
+              <TableHead className={`${columnClasses.agent} text-primary font-semibold`}>Agent</TableHead>
               <TableHead className={`${columnClasses.reconciled} text-primary font-semibold`}>Reconciled</TableHead>
             </TableRow>
           </TableHeader>
@@ -174,10 +178,12 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
                 </TableCell>
                 <TableCell className={columnClasses.variety}>{record.variety}</TableCell>
                 <TableCell className={columnClasses.cartonType}>{record.cartonType}</TableCell>
+                <TableCell className={columnClasses.orchard}>{record.orchard}</TableCell>
                 <TableCell className={columnClasses.numbers}>{formatNumber(record.cartonsSent)}</TableCell>
                 <TableCell className={columnClasses.numbers}>{formatNumber(record.soldOnMarket)}</TableCell>
                 <TableCell className={columnClasses.deviation}>{formatNumber(record.deviationSentSold)}</TableCell>
                 <TableCell className={columnClasses.value}>{formatNumber(record.totalValue, 'currency')}</TableCell>
+                <TableCell className={columnClasses.agent}>{record.agent}</TableCell>
                 <TableCell className={columnClasses.reconciled}>
                   {record.reconciled ? (
                     <Check className="h-5 w-5 text-green-500 mx-auto" />

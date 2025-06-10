@@ -11,10 +11,12 @@ export interface MatchedRecord {
   status: 'Matched' | 'Unmatched';
   variety: string;
   cartonType: string;
+  orchard: string;
   cartonsSent: number;
   soldOnMarket: number;
   deviationSentSold: number;
   totalValue: number;
+  agent: string;
   reconciled: boolean;
 }
 
