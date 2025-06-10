@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -150,10 +149,8 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
               <TableHead className={`${columnClasses.variety} text-primary font-semibold`}>Variety</TableHead>
               <TableHead className={`${columnClasses.cartonType} text-primary font-semibold`}>Carton Type</TableHead>
               <TableHead className={`${columnClasses.numbers} text-primary font-semibold`}>Cartons Sent</TableHead>
-              <TableHead className={`${columnClasses.numbers} text-primary font-semibold`}>Cartons Received</TableHead>
-              <TableHead className={`${columnClasses.deviation} text-primary font-semibold`}>Deviation Sent/Received</TableHead>
               <TableHead className={`${columnClasses.numbers} text-primary font-semibold`}>Cartons Sold</TableHead>
-              <TableHead className={`${columnClasses.deviation} text-primary font-semibold`}>Deviation Received/Sold</TableHead>
+              <TableHead className={`${columnClasses.deviation} text-primary font-semibold`}>Deviation Sent/Sold</TableHead>
               <TableHead className={`${columnClasses.value} text-primary font-semibold`}>Total Value</TableHead>
               <TableHead className={`${columnClasses.reconciled} text-primary font-semibold`}>Reconciled</TableHead>
             </TableRow>
@@ -178,10 +175,8 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
                 <TableCell className={columnClasses.variety}>{record.variety}</TableCell>
                 <TableCell className={columnClasses.cartonType}>{record.cartonType}</TableCell>
                 <TableCell className={columnClasses.numbers}>{formatNumber(record.cartonsSent)}</TableCell>
-                <TableCell className={columnClasses.numbers}>{formatNumber(record.received)}</TableCell>
-                <TableCell className={columnClasses.deviation}>{formatNumber(record.deviationSentReceived)}</TableCell>
                 <TableCell className={columnClasses.numbers}>{formatNumber(record.soldOnMarket)}</TableCell>
-                <TableCell className={columnClasses.deviation}>{formatNumber(record.deviationReceivedSold)}</TableCell>
+                <TableCell className={columnClasses.deviation}>{formatNumber(record.deviationSentSold)}</TableCell>
                 <TableCell className={columnClasses.value}>{formatNumber(record.totalValue, 'currency')}</TableCell>
                 <TableCell className={columnClasses.reconciled}>
                   {record.reconciled ? (

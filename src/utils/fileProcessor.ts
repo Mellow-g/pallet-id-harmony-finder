@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { FileData, MatchedRecord, Statistics } from '@/types';
 
@@ -91,18 +90,17 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
       const last4 = getLast4Digits(exportPltId);
       const loadRecords = loadDataMap.get(last4) || [];
       
+      const soldOnMarket = Number(sale['ctn_qty']) || 0;
+      
       const loadInfo = loadRecords.find(record => 
-        record.cartonsSent === Number(sale['Received'])
+        record.cartonsSent === soldOnMarket
       ) || loadRecords[0];
 
       if (loadInfo) {
         processedPalletIds.add(loadInfo.formattedPalletId);
       }
 
-      const received = Number(sale['Received']) || 0;
-      const soldOnMarket = Number(sale['Sold']) || 0;
-
-      console.log('Processing sales record:', { exportPltId, received, soldOnMarket, loadInfo });
+      console.log('Processing sales record:', { exportPltId, soldOnMarket, loadInfo });
 
       return {
         formattedPalletId: loadInfo ? loadInfo.formattedPalletId : '',
@@ -111,12 +109,10 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
         variety: loadInfo ? loadInfo.variety : '',
         cartonType: loadInfo ? loadInfo.cartonType : '',
         cartonsSent: loadInfo ? loadInfo.cartonsSent : 0,
-        received,
-        deviationSentReceived: loadInfo ? loadInfo.cartonsSent - received : 0,
         soldOnMarket,
-        deviationReceivedSold: received - soldOnMarket,
+        deviationSentSold: loadInfo ? loadInfo.cartonsSent - soldOnMarket : 0,
         totalValue: Number(sale['Total Value']) || 0,
-        reconciled: loadInfo ? (loadInfo.cartonsSent === received && received === soldOnMarket) : false
+        reconciled: loadInfo ? (loadInfo.cartonsSent === soldOnMarket) : false
       };
     });
 
@@ -130,10 +126,8 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
         variety: load['Variety'] || '',
         cartonType: load['Ctn Type'] || '',
         cartonsSent: Number(load['# Ctns']) || 0,
-        received: 0,
-        deviationSentReceived: Number(load['# Ctns']) || 0,
         soldOnMarket: 0,
-        deviationReceivedSold: 0,
+        deviationSentSold: Number(load['# Ctns']) || 0,
         totalValue: 0,
         reconciled: false
       });
@@ -166,10 +160,8 @@ export function generateExcel(data: MatchedRecord[]): void {
     'Variety': item.variety,
     'Carton Type': item.cartonType,
     '# Ctns Sent': item.cartonsSent,
-    'Received': item.received,
-    'Deviation Sent/Received': item.deviationSentReceived,
     'Sold on market': item.soldOnMarket,
-    'Deviation Received/Sold': item.deviationReceivedSold,
+    'Deviation Sent/Sold': item.deviationSentSold,
     'Total Value': item.totalValue,
     'Reconciled': item.reconciled ? 'Yes' : 'No'
   }));
@@ -177,7 +169,7 @@ export function generateExcel(data: MatchedRecord[]): void {
   const ws = XLSX.utils.json_to_sheet(exportData);
   
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  const totalValueCol = 'K';
+  const totalValueCol = 'I';
   for (let row = range.s.r + 1; row <= range.e.r; row++) {
     const cell = totalValueCol + (row + 1);
     if (ws[cell]) {

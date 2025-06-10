@@ -12,10 +12,8 @@ export interface MatchedRecord {
   variety: string;
   cartonType: string;
   cartonsSent: number;
-  received: number;
-  deviationSentReceived: number;
   soldOnMarket: number;
-  deviationReceivedSold: number;
+  deviationSentSold: number;
   totalValue: number;
   reconciled: boolean;
 }
