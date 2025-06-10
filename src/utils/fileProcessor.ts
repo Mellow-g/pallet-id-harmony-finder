@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { FileData, MatchedRecord, Statistics } from '@/types';
 
@@ -30,6 +31,7 @@ export async function processFile(file: File): Promise<any[]> {
           raw: true,
           defval: ''
         });
+        console.log('Processed file data:', data);
         resolve(data);
       } catch (err) {
         reject(err);
@@ -46,42 +48,47 @@ function getLast4Digits(ref: string | number): string {
   return numbers.slice(-4);
 }
 
-function isValidSupplierRef(ref: string | undefined): boolean {
+function isValidExportPltId(ref: string | undefined): boolean {
   if (!ref) return false;
   if (ref.includes('DESTINATION:') || ref.includes('(Pre)')) return false;
   return /\d/.test(ref);
 }
 
 export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
+  console.log('Load data columns:', loadData[0] ? Object.keys(loadData[0]) : 'No data');
+  console.log('Sales data columns:', salesData[0] ? Object.keys(salesData[0]) : 'No data');
+  
   const loadDataMap = new Map();
-  const processedConsignments = new Set();
+  const processedPalletIds = new Set();
   
   loadData.forEach(load => {
-    const consignNumber = load['Consign']?.toString() || '';
-    const cartonsSent = Number(load['Sum of # Ctns']);
+    const formattedPalletId = load['Formatted Pallet ID']?.toString() || '';
+    const cartonsSent = Number(load['# Ctns']) || 0;
     
-    const last4 = getLast4Digits(consignNumber);
+    console.log('Processing load record:', { formattedPalletId, cartonsSent });
+    
+    const last4 = getLast4Digits(formattedPalletId);
     if (last4) {
       if (!loadDataMap.has(last4)) {
         loadDataMap.set(last4, []);
       }
       loadDataMap.get(last4).push({
-        consignNumber,
+        formattedPalletId,
         variety: load['Variety'] || '',
         cartonType: load['Ctn Type'] || '',
-        cartonsSent: Number(load['Sum of # Ctns']) || 0
+        cartonsSent
       });
     }
   });
 
   const matchedRecords: MatchedRecord[] = salesData
     .filter(sale => {
-      const supplierRef = sale['Supplier Ref']?.toString().trim();
-      return isValidSupplierRef(supplierRef);
+      const exportPltId = sale['export_plt_id']?.toString().trim();
+      return isValidExportPltId(exportPltId);
     })
     .map(sale => {
-      const supplierRef = sale['Supplier Ref'];
-      const last4 = getLast4Digits(supplierRef);
+      const exportPltId = sale['export_plt_id'];
+      const last4 = getLast4Digits(exportPltId);
       const loadRecords = loadDataMap.get(last4) || [];
       
       const loadInfo = loadRecords.find(record => 
@@ -89,15 +96,17 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
       ) || loadRecords[0];
 
       if (loadInfo) {
-        processedConsignments.add(loadInfo.consignNumber);
+        processedPalletIds.add(loadInfo.formattedPalletId);
       }
 
       const received = Number(sale['Received']) || 0;
       const soldOnMarket = Number(sale['Sold']) || 0;
 
+      console.log('Processing sales record:', { exportPltId, received, soldOnMarket, loadInfo });
+
       return {
-        consignNumber: loadInfo ? loadInfo.consignNumber : '',
-        supplierRef: supplierRef || '',
+        formattedPalletId: loadInfo ? loadInfo.formattedPalletId : '',
+        exportPltId: exportPltId || '',
         status: loadInfo ? 'Matched' as const : 'Unmatched' as const,
         variety: loadInfo ? loadInfo.variety : '',
         cartonType: loadInfo ? loadInfo.cartonType : '',
@@ -112,17 +121,17 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
     });
 
   loadData.forEach(load => {
-    const consignNumber = load['Consign']?.toString() || '';
-    if (!processedConsignments.has(consignNumber)) {
+    const formattedPalletId = load['Formatted Pallet ID']?.toString() || '';
+    if (!processedPalletIds.has(formattedPalletId)) {
       matchedRecords.push({
-        consignNumber,
-        supplierRef: '',
+        formattedPalletId,
+        exportPltId: '',
         status: 'Unmatched' as const,
         variety: load['Variety'] || '',
         cartonType: load['Ctn Type'] || '',
-        cartonsSent: Number(load['Sum of # Ctns']) || 0,
+        cartonsSent: Number(load['# Ctns']) || 0,
         received: 0,
-        deviationSentReceived: Number(load['Sum of # Ctns']) || 0,
+        deviationSentReceived: Number(load['# Ctns']) || 0,
         soldOnMarket: 0,
         deviationReceivedSold: 0,
         totalValue: 0,
@@ -131,6 +140,7 @@ export function matchData(loadData: any[], salesData: any[]): MatchedRecord[] {
     }
   });
 
+  console.log('Final matched records:', matchedRecords);
   return matchedRecords;
 }
 
@@ -150,8 +160,8 @@ export function calculateStatistics(data: MatchedRecord[]): Statistics {
 
 export function generateExcel(data: MatchedRecord[]): void {
   const exportData = data.map(item => ({
-    'Consign Number': item.consignNumber,
-    'Supplier Ref': item.supplierRef,
+    'Formatted Pallet ID': item.formattedPalletId,
+    'Export Plt ID': item.exportPltId,
     'Status': item.status,
     'Variety': item.variety,
     'Carton Type': item.cartonType,

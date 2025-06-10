@@ -1,3 +1,4 @@
+
 export type FileType = 'load' | 'sales';
 
 export interface FileData {
@@ -5,8 +6,8 @@ export interface FileData {
 }
 
 export interface MatchedRecord {
-  consignNumber: string;
-  supplierRef: string;
+  formattedPalletId: string;
+  exportPltId: string;
   status: 'Matched' | 'Unmatched';
   variety: string;
   cartonType: string;
