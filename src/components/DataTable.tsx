@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -29,14 +30,35 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
   }, [data]);
 
   const filteredAndSortedData = useMemo(() => {
+    console.log('Filtering data with:', { statusFilter, varietyFilter, reconciledFilter });
+    
     const filtered = data.filter(record => {
-      const matchesStatus = statusFilter === "all" || record.status === (statusFilter === "matched" ? "Matched" : "Unmatched");
+      // Status filter
+      const matchesStatus = statusFilter === "all" || 
+        (statusFilter === "matched" && record.status === "Matched") ||
+        (statusFilter === "unmatched" && record.status === "Unmatched");
+      
+      // Variety filter
       const matchesVariety = varietyFilter === "all" || record.variety === varietyFilter;
+      
+      // Reconciled filter
       const matchesReconciled = reconciledFilter === "all" || 
-        (reconciledFilter === "reconciled" ? record.reconciled : !record.reconciled);
+        (reconciledFilter === "reconciled" && record.reconciled === true) ||
+        (reconciledFilter === "not-reconciled" && record.reconciled === false);
+      
+      console.log('Record filter check:', { 
+        record: record.formattedPalletId, 
+        matchesStatus, 
+        matchesVariety, 
+        matchesReconciled 
+      });
+      
       return matchesStatus && matchesVariety && matchesReconciled;
     });
 
+    console.log('Filtered data count:', filtered.length);
+
+    // Sort the filtered data
     const reconciled: MatchedRecord[] = [];
     const matched: MatchedRecord[] = [];
     const unmatched: MatchedRecord[] = [];
