@@ -7,12 +7,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MatchedRecord, Statistics } from "@/types";
+import { MatchedRecord } from "@/types";
 import { formatNumber, generateExcel } from "@/utils/fileProcessor";
-import { useState, useMemo } from "react";
-import { Download, Check, X } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { Check, X } from "lucide-react";
+import { FilterControls } from "./FilterControls";
 
 interface DataTableProps {
   data: MatchedRecord[];
@@ -25,46 +24,57 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
   const [reconciledFilter, setReconciledFilter] = useState<string>("all");
 
   const varieties = useMemo(() => {
-    const uniqueVarieties = new Set(data.map(record => record.variety));
-    return Array.from(uniqueVarieties).filter(Boolean);
+    const uniqueVarieties = new Set(data.map(record => record.variety).filter(Boolean));
+    return Array.from(uniqueVarieties);
   }, [data]);
 
-  const filteredAndSortedData = useMemo(() => {
-    console.log('Filtering data with:', { statusFilter, varietyFilter, reconciledFilter });
+  const handleStatusChange = useCallback((value: string) => {
+    console.log('Status filter changed to:', value);
+    setStatusFilter(value);
+  }, []);
+
+  const handleVarietyChange = useCallback((value: string) => {
+    console.log('Variety filter changed to:', value);
+    setVarietyFilter(value);
+  }, []);
+
+  const handleReconciledChange = useCallback((value: string) => {
+    console.log('Reconciled filter changed to:', value);
+    setReconciledFilter(value);
+  }, []);
+
+  const filteredData = useMemo(() => {
+    console.log('Applying filters:', { statusFilter, varietyFilter, reconciledFilter });
     
-    const filtered = data.filter(record => {
+    return data.filter(record => {
       // Status filter
-      const matchesStatus = statusFilter === "all" || 
-        (statusFilter === "matched" && record.status === "Matched") ||
-        (statusFilter === "unmatched" && record.status === "Unmatched");
+      if (statusFilter !== "all") {
+        if (statusFilter === "matched" && record.status !== "Matched") return false;
+        if (statusFilter === "unmatched" && record.status !== "Unmatched") return false;
+      }
       
       // Variety filter
-      const matchesVariety = varietyFilter === "all" || record.variety === varietyFilter;
+      if (varietyFilter !== "all" && record.variety !== varietyFilter) return false;
       
       // Reconciled filter
-      const matchesReconciled = reconciledFilter === "all" || 
-        (reconciledFilter === "reconciled" && record.reconciled === true) ||
-        (reconciledFilter === "not-reconciled" && record.reconciled === false);
+      if (reconciledFilter !== "all") {
+        if (reconciledFilter === "reconciled" && !record.reconciled) return false;
+        if (reconciledFilter === "not-reconciled" && record.reconciled) return false;
+      }
       
-      console.log('Record filter check:', { 
-        record: record.formattedPalletId, 
-        matchesStatus, 
-        matchesVariety, 
-        matchesReconciled 
-      });
-      
-      return matchesStatus && matchesVariety && matchesReconciled;
+      return true;
     });
+  }, [data, statusFilter, varietyFilter, reconciledFilter]);
 
-    console.log('Filtered data count:', filtered.length);
-
-    // Sort the filtered data
+  const sortedData = useMemo(() => {
+    console.log('Sorting filtered data:', filteredData.length, 'records');
+    
     const reconciled: MatchedRecord[] = [];
     const matched: MatchedRecord[] = [];
     const unmatched: MatchedRecord[] = [];
     const incomplete: MatchedRecord[] = [];
 
-    filtered.forEach(record => {
+    filteredData.forEach(record => {
       if (record.reconciled) {
         reconciled.push(record);
       } else if (!record.formattedPalletId && !record.exportPltId) {
@@ -77,16 +87,18 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
     });
 
     return [...reconciled, ...matched, ...unmatched, ...incomplete];
-  }, [data, statusFilter, varietyFilter, reconciledFilter]);
+  }, [filteredData]);
 
   // Update parent component with filtered data for statistics
   useMemo(() => {
-    onFilteredDataChange?.(filteredAndSortedData);
-  }, [filteredAndSortedData, onFilteredDataChange]);
+    if (onFilteredDataChange) {
+      onFilteredDataChange(sortedData);
+    }
+  }, [sortedData, onFilteredDataChange]);
 
-  const handleExport = () => {
-    generateExcel(filteredAndSortedData);
-  };
+  const handleExport = useCallback(() => {
+    generateExcel(sortedData);
+  }, [sortedData]);
 
   const getRowClassName = (record: MatchedRecord) => {
     if (!record.formattedPalletId && !record.exportPltId) {
@@ -115,53 +127,16 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-4 items-center justify-between bg-card p-4 rounded-lg">
-        <div className="flex flex-wrap gap-4">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] bg-background text-foreground">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="matched">Matched</SelectItem>
-              <SelectItem value="unmatched">Unmatched</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={varietyFilter} onValueChange={setVarietyFilter}>
-            <SelectTrigger className="w-[180px] bg-background text-foreground">
-              <SelectValue placeholder="Filter by variety" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Varieties</SelectItem>
-              {varieties.map((variety) => (
-                <SelectItem key={variety} value={variety}>
-                  {variety}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={reconciledFilter} onValueChange={setReconciledFilter}>
-            <SelectTrigger className="w-[180px] bg-background text-foreground">
-              <SelectValue placeholder="Filter by reconciliation" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Records</SelectItem>
-              <SelectItem value="reconciled">Reconciled</SelectItem>
-              <SelectItem value="not-reconciled">Not Reconciled</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Button 
-          onClick={handleExport}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export to Excel
-        </Button>
-      </div>
+      <FilterControls
+        statusFilter={statusFilter}
+        varietyFilter={varietyFilter}
+        reconciledFilter={reconciledFilter}
+        varieties={varieties}
+        onStatusChange={handleStatusChange}
+        onVarietyChange={handleVarietyChange}
+        onReconciledChange={handleReconciledChange}
+        onExport={handleExport}
+      />
 
       <div className="rounded-md border border-primary/20 max-h-[70vh] overflow-auto">
         <Table>
@@ -182,7 +157,7 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAndSortedData.map((record, index) => (
+            {sortedData.map((record, index) => (
               <TableRow
                 key={index}
                 className={`${getRowClassName(record)} transition-colors`}
