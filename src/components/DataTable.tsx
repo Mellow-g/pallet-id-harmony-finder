@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { MatchedRecord } from "@/types";
 import { formatNumber, generateExcel } from "@/utils/fileProcessor";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Check, X } from "lucide-react";
 import { FilterControls } from "./FilterControls";
 
@@ -46,6 +46,10 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
   const filteredData = useMemo(() => {
     console.log('Applying filters:', { statusFilter, varietyFilter, reconciledFilter });
     
+    if (!data || data.length === 0) {
+      return [];
+    }
+
     return data.filter(record => {
       // Status filter
       if (statusFilter !== "all") {
@@ -69,6 +73,10 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
   const sortedData = useMemo(() => {
     console.log('Sorting filtered data:', filteredData.length, 'records');
     
+    if (!filteredData || filteredData.length === 0) {
+      return [];
+    }
+
     const reconciled: MatchedRecord[] = [];
     const matched: MatchedRecord[] = [];
     const unmatched: MatchedRecord[] = [];
@@ -90,17 +98,19 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
   }, [filteredData]);
 
   // Update parent component with filtered data for statistics
-  useMemo(() => {
-    if (onFilteredDataChange) {
+  useEffect(() => {
+    if (onFilteredDataChange && sortedData) {
       onFilteredDataChange(sortedData);
     }
   }, [sortedData, onFilteredDataChange]);
 
   const handleExport = useCallback(() => {
-    generateExcel(sortedData);
+    if (sortedData && sortedData.length > 0) {
+      generateExcel(sortedData);
+    }
   }, [sortedData]);
 
-  const getRowClassName = (record: MatchedRecord) => {
+  const getRowClassName = useCallback((record: MatchedRecord) => {
     if (!record.formattedPalletId && !record.exportPltId) {
       return 'bg-orange-900/30 hover:bg-orange-900/40';
     }
@@ -108,7 +118,7 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
       return 'bg-destructive/10 hover:bg-destructive/20';
     }
     return 'hover:bg-card/50';
-  };
+  }, []);
 
   // Define column classes with exact pixel widths and consistent alignment
   const columnClasses = {
@@ -159,7 +169,7 @@ export const DataTable = ({ data, onFilteredDataChange }: DataTableProps) => {
           <TableBody>
             {sortedData.map((record, index) => (
               <TableRow
-                key={index}
+                key={`${record.formattedPalletId || 'empty'}-${record.exportPltId || 'empty'}-${index}`}
                 className={`${getRowClassName(record)} transition-colors`}
               >
                 <TableCell className={columnClasses.palletId}>{record.formattedPalletId}</TableCell>
