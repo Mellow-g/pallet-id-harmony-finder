@@ -75,6 +75,9 @@ const Index = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
             Normat Farms
           </h1>
+          <p className="text-2xl font-semibold text-primary mb-2">
+            CORE
+          </p>
           <p className="text-lg text-primary/80 max-w-2xl mx-auto">
             Advanced Data Analysis and Reporting System
           </p>
